@@ -50,6 +50,26 @@ class User extends Authenticatable
      */
     public function tasks(): HasMany
     {
-        return $this->hasMany(\App\Models\Task::class)->with('tags');
+        return $this->hasMany(Task::class)->with('tags');
+    }
+
+    /**
+     * Get the tasks for the user.
+     *
+     * @return \Illuminate\Database\Eloquent\Relations\HasMany
+     */
+    public function shareTasks(): HasMany
+    {
+        return $this->hasMany(Task::class)->using(Share::class);
+    }
+
+    /**
+     * Get the tasks for the user.
+     *
+     * @return \Illuminate\Database\Eloquent\Relations\HasMany
+     */
+    public function shares(): HasMany
+    {
+        return $this->hasMany(Share::class, 'shared_user_id','id');
     }
 }

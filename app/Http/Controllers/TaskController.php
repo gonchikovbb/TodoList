@@ -2,10 +2,14 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\StoreShareRequest;
 use App\Http\Requests\StoreTaskRequest;
+use App\Models\Permission;
+use App\Models\Share;
 use App\Models\Task;
-use Illuminate\Http\Request;
+use App\Models\User;
 use App\Services\TaskService;
+use Illuminate\Http\Request;
 
 class TaskController extends Controller
 {
@@ -58,13 +62,30 @@ class TaskController extends Controller
 
     public function showTasks()
     {
-        $tasks = auth()->user()->tasks()->paginate(5);
+        $user = auth()->user();
 
-        return view('tasks.showTasks', compact('tasks'));
+        $tasks = $user->tasks()->paginate(5);
+
+        $permissions = Permission::all();
+
+        $otherUsers = User::query()->select('users.*')->whereNotIn('users.id',[$user->id])->get();
+
+        $shares = Share::with('tasks')->where('shared_user_id','=',$user->id)->get();
+
+        return view('tasks.showTasks', [
+            'tasks' => $tasks,
+            'otherUsers' => $otherUsers,
+            'permissions' => $permissions,
+            'shares' => $shares,
+        ]);
     }
 
     public function filter(Request $request)
     {
+        $permissions = Permission::all();
+        $user = auth()->user();
+        $otherUsers = User::query()->select('users.*')->whereNotIn('users.id',[$user->id])->get();
+
         $title = $request->input('title');
         $description = $request->input('description');
         $status = $request->input('status');
@@ -88,6 +109,27 @@ class TaskController extends Controller
             })
             ->paginate();
 
-        return view('tasks.showTasks', compact('tasks'));
+        return view('tasks.showTasks', [
+            'tasks' => $tasks,
+            'otherUsers' => $otherUsers,
+            'permissions' => $permissions,
+        ]);
+    }
+
+    public function share(StoreShareRequest $request)
+    {
+        $userIdShared = $request->input('userIdShared');
+
+        $access = $request->input('access');
+
+        $user = auth()->user();
+
+        Share::create([
+            'owner_id' => $user->id,
+            'shared_user_id' => $userIdShared,
+            'access' => $access,
+        ]);
+
+        return redirect()->route('tasks.showTasks');
     }
 }
